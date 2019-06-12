@@ -26,11 +26,11 @@ abstract class PostmarkClientBase {
 	public static $BASE_URL = "https://api.postmarkapp.com";
 
 	/**
-	 * CERTIFICATE_PATH is NULL by default. 
+	 * CERTIFICATE_PATH is NULL by default.
 	 * This can be set to your own certificate chain if your PHP instance is not able to verify the SSL.
 	 *
 	 * Setting this value causes SSL/TLS requests to use this certificate chain for verifying Postmark requests.
-	 * 
+	 *
 	 * See: https://guzzle.readthedocs.org/en/5.3/clients.html#verify
 	 *
 	 * @var string
@@ -51,14 +51,15 @@ abstract class PostmarkClientBase {
 		$this->timeout = $timeout;
 	}
 
-	/**
-	 * The base request method for all API access.
-	 *
-	 * @param string $method The request VERB to use (GET, POST, PUT, DELETE)
-	 * @param string $path The API path.
-	 * @param array $body The content to be used (either as the query, or the json post/put body)
-	 * @return object
-	 */
+    /**
+     * The base request method for all API access.
+     *
+     * @param string $method The request VERB to use (GET, POST, PUT, DELETE)
+     * @param string $path The API path.
+     * @param array $body The content to be used (either as the query, or the json post/put body)
+     * @return array
+     * @throws PostmarkException
+     */
 	protected function processRestRequest($method = NULL, $path = NULL, $body = NULL) {
 
 		$client = new \GuzzleHttp\Client(array('defaults' => array(
@@ -111,7 +112,7 @@ abstract class PostmarkClientBase {
 
 		$response = $client->send($request);
 
-		$result = NULL;
+		$result = [];
 
 		switch ($response->getStatusCode()) {
 			case 200:

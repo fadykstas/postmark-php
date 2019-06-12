@@ -38,7 +38,7 @@ class PostmarkClient extends PostmarkClientBase {
      * @param  string $bcc Blind Carbon Copy recipients, comma-separated.
      * @param  array $headers Headers to be included with the sent email message.
      * @param  array $attachments An array of PostmarkAttachment objects.
-     * @return DyanamicResponseModel
+     * @return DynamicResponseModel
      * @throws Models\PostmarkException
      */
 	function sendEmail($from, $to, $subject, $htmlBody = NULL, $textBody = NULL,
@@ -67,7 +67,7 @@ class PostmarkClient extends PostmarkClientBase {
      *
      * @param  string $from : The sender of the email. (Your account must have an associated Sender Signature for the address used.)
      * @param  string $to The recipient of the email.
-     * @param  integer $templateId The ID of the template to use to generate the content of this message.
+     * @param  integer|string $templateIdOrAlias The ID of the template to use to generate the content of this message.
      * @param  object $templateModel The values to combine with the Templated content.
      * @param  boolean $inlineCss If the template contains an HTMLBody, CSS is automatically inlined, you may opt-out of this by passing 'false' for this parameter.
      * @param  string $tag A tag associated with this message, useful for classifying sent messages.
@@ -77,10 +77,10 @@ class PostmarkClient extends PostmarkClientBase {
      * @param  string $bcc Blind Carbon Copy recipients, comma-separated.
      * @param  array $headers Headers to be included with the sent email message.
      * @param  array $attachments An array of PostmarkAttachment objects.
-     * @return DyanamicResponseModel
+     * @return Models\DynamicResponseModel
      * @throws Models\PostmarkException
      */
-	function sendEmailWithTemplate($from, $to, $templateId, $templateModel, $inlineCss = true,
+	function sendEmailWithTemplate($from, $to, $templateIdOrAlias, $templateModel, $inlineCss = true,
 		$tag = NULL, $trackOpens = true, $replyTo = NULL,
 		$cc = NULL, $bcc = NULL,
 		$headers = NULL, $attachments = NULL) {
@@ -96,16 +96,24 @@ class PostmarkClient extends PostmarkClientBase {
 		$body['TrackOpens'] = $trackOpens;
 		$body['Attachments'] = $attachments;
 		$body['TemplateModel'] = $templateModel;
-		$body['TemplateId'] = $templateId;
 		$body['InlineCss'] = $inlineCss;
+
+        if ( is_int( $templateIdOrAlias ) ) {
+            $body['TemplateId'] = $templateIdOrAlias;
+            // Uses the Template Alias if specified instead of Template ID.
+        } else {
+            $body['TemplateAlias'] = $templateIdOrAlias;
+        }
 
 		return new DynamicResponseModel($this->processRestRequest('POST', '/email/withTemplate', $body));
 	}
 
-	/**
-	 * The Postmark API wants an Array of Key-Value pairs, not a dictionary object,
-	 * therefore, we need to wrap the elements in an array.
-	 */
+    /**
+     * The Postmark API wants an Array of Key-Value pairs, not a dictionary object,
+     * therefore, we need to wrap the elements in an array.
+     * @param $headers
+     * @return array|null
+     */
 	private function fixHeaders($headers) {
 		$retval = NULL;
 		if ($headers != NULL) {
@@ -128,7 +136,7 @@ class PostmarkClient extends PostmarkClientBase {
      *
      * @param array $emailBatch An array of emails to be sent in one batch.
      *
-     * @return DyanamicResponseModel
+     * @return DynamicResponseModel
      * @throws Models\PostmarkException
      */
 	function sendEmailBatch($emailBatch = array()) {
@@ -150,7 +158,7 @@ class PostmarkClient extends PostmarkClientBase {
     /**
      * Get an overview of the delivery statistics for all email that has been sent through this Server.
      *
-     * @return DyanamicResponseModel
+     * @return DynamicResponseModel
      * @throws Models\PostmarkException
      */
 	function getDeliveryStatistics() {
@@ -186,12 +194,13 @@ class PostmarkClient extends PostmarkClientBase {
 		return new DynamicResponseModel($this->processRestRequest('GET', '/bounces', $query));
 	}
 
-	/**
-	 * Locate information on a specific email bounce.
-	 *
-	 * @param  integer $id The ID of the bounce to get.
-	 * @return DyanamicResponseModel
-	 */
+    /**
+     * Locate information on a specific email bounce.
+     *
+     * @param  integer $id The ID of the bounce to get.
+     * @return DynamicResponseModel
+     * @throws Models\PostmarkException
+     */
 	function getBounce($id) {
 		return new DynamicResponseModel($this->processRestRequest('GET', "/bounces/$id"));
 	}
@@ -211,7 +220,7 @@ class PostmarkClient extends PostmarkClientBase {
      * Cause the email address associated with a Bounce to be reactivated.
      *
      * @param  integer $id The bounce which has a deactivated email address.
-     * @return DyanamicResponseModel
+     * @return DynamicResponseModel
      * @throws Models\PostmarkException
      */
 	function activateBounce($id) {
@@ -234,7 +243,7 @@ class PostmarkClient extends PostmarkClientBase {
      * Get the settings for the server associated with this PostmarkClient instance
      * (defined by the $server_token you passed when instantiating this client)
      *
-     * @return DyanamicResponseModel
+     * @return DynamicResponseModel
      * @throws Models\PostmarkException
      */
 	function getServer() {
@@ -256,7 +265,7 @@ class PostmarkClient extends PostmarkClientBase {
      * @param  bool $trackOpens Indicates if all emails being sent through this server have open tracking enabled.
      * @param  string $inboundDomain Inbound domain for MX setup.
      * @param  integer $inboundSpamThreshold The maximum spam score for an inbound message before it's blocked (range from 0-30).
-     * @return DyanamicResponseModel
+     * @return DynamicResponseModel
      * @throws Models\PostmarkException
      */
 	function editServer($name = NULL, $color = NULL, $rawEmailEnabled = NULL,
@@ -290,14 +299,14 @@ class PostmarkClient extends PostmarkClientBase {
      * @param  string $tag Filter by tag.
      * @param  string $subject Filter by subject.
      * @param  string $status The current status for the outbound messages to return defaults to 'sent'
-     * @param  string $fromdate Filter to messages on or after YYYY-MM-DD
-     * @param  string $todate Filter to messages on or before YYYY-MM-DD
-     * @return DyanamicResponseModel
+     * @param  string $fromDate Filter to messages on or after YYYY-MM-DD
+     * @param  string $toDate Filter to messages on or before YYYY-MM-DD
+     * @return DynamicResponseModel
      * @throws Models\PostmarkException
      */
 	function getOutboundMessages($count = 100, $offset = 0, $recipient = NULL,
 		$fromEmail = NULL, $tag = NULL, $subject = NULL, $status = NULL,
-		$fromdate = NULL, $todate = NULL) {
+		$fromDate = NULL, $toDate = NULL) {
 
 		$query = array();
 		$query["recipient"] = $recipient;
@@ -307,8 +316,8 @@ class PostmarkClient extends PostmarkClientBase {
 		$query["count"] = $count;
 		$query["offset"] = $offset;
 		$query["status"] = $status;
-		$query["fromdate"] = $fromdate;
-		$query["todate"] = $todate;
+		$query["fromdate"] = $fromDate;
+		$query["todate"] = $toDate;
 
 		return new DynamicResponseModel($this->processRestRequest('GET', '/messages/outbound', $query));
 	}
@@ -346,14 +355,14 @@ class PostmarkClient extends PostmarkClientBase {
      * @param  string $subject Filter by the message subject
      * @param  string $mailboxHash Filter by the mailboxHash
      * @param  string $status Filter by status ('blocked' or 'processed')
-     * @param  string $fromdate Filter to messages on or after YYYY-MM-DD
-     * @param  string $todate Filter to messages on or before YYYY-MM-DD
+     * @param  string $fromDate Filter to messages on or after YYYY-MM-DD
+     * @param  string $toDate Filter to messages on or before YYYY-MM-DD
      * @return DynamicResponseModel
      * @throws Models\PostmarkException
      */
 	function getInboundMessages($count = 100, $offset = 0, $recipient = NULL, $fromEmail = NULL,
-		$tag = NULL, $subject = NULL, $mailboxHash = NULL, $status = NULL, $fromdate = NULL,
-		$todate = NULL) {
+		$tag = NULL, $subject = NULL, $mailboxHash = NULL, $status = NULL, $fromDate = NULL,
+		$toDate = NULL) {
 
 		$query = array();
 		$query['recipient'] = $recipient;
@@ -364,8 +373,8 @@ class PostmarkClient extends PostmarkClientBase {
 		$query['count'] = $count;
 		$query['status'] = $status;
 		$query['offset'] = $offset;
-		$query['fromdate'] = $fromdate;
-		$query['todate'] = $todate;
+		$query['fromdate'] = $fromDate;
+		$query['todate'] = $toDate;
 
 		return new DynamicResponseModel($this->processRestRequest('GET', '/messages/inbound', $query));
 	}
@@ -471,17 +480,17 @@ class PostmarkClient extends PostmarkClientBase {
      * optionally filtering on message tag, and a to and from date.
      *
      * @param  string $tag Filter by tag.
-     * @param  string $fromdate must be of the format 'YYYY-MM-DD'
-     * @param  string $todate must be of the format 'YYYY-MM-DD'
+     * @param  string $fromDate must be of the format 'YYYY-MM-DD'
+     * @param  string $toDate must be of the format 'YYYY-MM-DD'
      * @return DynamicResponseModel
      * @throws Models\PostmarkException
      */
-	function getOutboundOverviewStatistics($tag = NULL, $fromdate = NULL, $todate = NULL) {
+	function getOutboundOverviewStatistics($tag = NULL, $fromDate = NULL, $toDate = NULL) {
 		$query = array();
 
 		$query['tag'] = $tag;
-		$query['fromdate'] = $fromdate;
-		$query['todate'] = $todate;
+		$query['fromdate'] = $fromDate;
+		$query['todate'] = $toDate;
 
 		return new DynamicResponseModel($this->processRestRequest('GET', '/stats/outbound', $query));
 	}
@@ -491,17 +500,17 @@ class PostmarkClient extends PostmarkClientBase {
      * optionally filtering on message tag, and a to and from date.
      *
      * @param  string $tag Filter by tag.
-     * @param  string $fromdate must be of the format 'YYYY-MM-DD'
-     * @param  string $todate must be of the format 'YYYY-MM-DD'
+     * @param  string $fromDate must be of the format 'YYYY-MM-DD'
+     * @param  string $toDate must be of the format 'YYYY-MM-DD'
      * @return DynamicResponseModel
      * @throws Models\PostmarkException
      */
-	function getOutboundSendStatistics($tag = NULL, $fromdate = NULL, $todate = NULL) {
+	function getOutboundSendStatistics($tag = NULL, $fromDate = NULL, $toDate = NULL) {
 		$query = array();
 
 		$query['tag'] = $tag;
-		$query['fromdate'] = $fromdate;
-		$query['todate'] = $todate;
+		$query['fromdate'] = $fromDate;
+		$query['todate'] = $toDate;
 
 		return new DynamicResponseModel($this->processRestRequest('GET', '/stats/outbound/sends', $query));
 	}
@@ -511,17 +520,17 @@ class PostmarkClient extends PostmarkClientBase {
      * optionally filtering on message tag, and a to and from date.
      *
      * @param  string $tag Filter by tag.
-     * @param  string $fromdate must be of the format 'YYYY-MM-DD'
-     * @param  string $todate must be of the format 'YYYY-MM-DD'
+     * @param  string $fromDate must be of the format 'YYYY-MM-DD'
+     * @param  string $toDate must be of the format 'YYYY-MM-DD'
      * @return DynamicResponseModel
      * @throws Models\PostmarkException
      */
-	function getOutboundBounceStatistics($tag = NULL, $fromdate = NULL, $todate = NULL) {
+	function getOutboundBounceStatistics($tag = NULL, $fromDate = NULL, $toDate = NULL) {
 		$query = array();
 
 		$query['tag'] = $tag;
-		$query['fromdate'] = $fromdate;
-		$query['todate'] = $todate;
+		$query['fromdate'] = $fromDate;
+		$query['todate'] = $toDate;
 
 		return new DynamicResponseModel($this->processRestRequest('GET', '/stats/outbound/bounces', $query));
 	}
@@ -531,17 +540,17 @@ class PostmarkClient extends PostmarkClientBase {
      * optionally filtering on message tag, and a to and from date.
      *
      * @param  string $tag Filter by tag.
-     * @param  string $fromdate must be of the format 'YYYY-MM-DD'
-     * @param  string $todate must be of the format 'YYYY-MM-DD'
+     * @param  string $fromDate must be of the format 'YYYY-MM-DD'
+     * @param  string $toDate must be of the format 'YYYY-MM-DD'
      * @return DynamicResponseModel
      * @throws Models\PostmarkException
      */
-	function getOutboundSpamComplaintStatistics($tag = NULL, $fromdate = NULL, $todate = NULL) {
+	function getOutboundSpamComplaintStatistics($tag = NULL, $fromDate = NULL, $toDate = NULL) {
 		$query = array();
 
 		$query['tag'] = $tag;
-		$query['fromdate'] = $fromdate;
-		$query['todate'] = $todate;
+		$query['fromdate'] = $fromDate;
+		$query['todate'] = $toDate;
 
 		return new DynamicResponseModel($this->processRestRequest('GET', '/stats/outbound/spam', $query));
 	}
@@ -551,17 +560,17 @@ class PostmarkClient extends PostmarkClientBase {
      * optionally filtering on message tag, and a to and from date.
      *
      * @param  string $tag Filter by tag.
-     * @param  string $fromdate must be of the format 'YYYY-MM-DD'
-     * @param  string $todate must be of the format 'YYYY-MM-DD'
+     * @param  string $fromDate must be of the format 'YYYY-MM-DD'
+     * @param  string $toDate must be of the format 'YYYY-MM-DD'
      * @return DynamicResponseModel
      * @throws Models\PostmarkException
      */
-	function getOutboundTrackedStatistics($tag = NULL, $fromdate = NULL, $todate = NULL) {
+	function getOutboundTrackedStatistics($tag = NULL, $fromDate = NULL, $toDate = NULL) {
 		$query = array();
 
 		$query['tag'] = $tag;
-		$query['fromdate'] = $fromdate;
-		$query['todate'] = $todate;
+		$query['fromdate'] = $fromDate;
+		$query['todate'] = $toDate;
 
 		return new DynamicResponseModel($this->processRestRequest('GET', '/stats/outbound/tracked', $query));
 	}
@@ -571,17 +580,17 @@ class PostmarkClient extends PostmarkClientBase {
      * optionally filtering on message tag, and a to and from date.
      *
      * @param  string $tag Filter by tag.
-     * @param  string $fromdate must be of the format 'YYYY-MM-DD'
-     * @param  string $todate must be of the format 'YYYY-MM-DD'
+     * @param  string $fromDate must be of the format 'YYYY-MM-DD'
+     * @param  string $toDate must be of the format 'YYYY-MM-DD'
      * @return DynamicResponseModel
      * @throws Models\PostmarkException
      */
-	function getOutboundOpenStatistics($tag = NULL, $fromdate = NULL, $todate = NULL) {
+	function getOutboundOpenStatistics($tag = NULL, $fromDate = NULL, $toDate = NULL) {
 		$query = array();
 
 		$query['tag'] = $tag;
-		$query['fromdate'] = $fromdate;
-		$query['todate'] = $todate;
+		$query['fromdate'] = $fromDate;
+		$query['todate'] = $toDate;
 
 		return new DynamicResponseModel($this->processRestRequest('GET', '/stats/outbound/opens', $query));
 	}
@@ -591,17 +600,17 @@ class PostmarkClient extends PostmarkClientBase {
      * optionally filtering on message tag, and a to and from date.
      *
      * @param  string $tag Filter by tag.
-     * @param  string $fromdate must be of the format 'YYYY-MM-DD'
-     * @param  string $todate must be of the format 'YYYY-MM-DD'
+     * @param  string $fromDate must be of the format 'YYYY-MM-DD'
+     * @param  string $toDate must be of the format 'YYYY-MM-DD'
      * @return DynamicResponseModel
      * @throws Models\PostmarkException
      */
-	function getOutboundPlatformStatistics($tag = NULL, $fromdate = NULL, $todate = NULL) {
+	function getOutboundPlatformStatistics($tag = NULL, $fromDate = NULL, $toDate = NULL) {
 		$query = array();
 
 		$query['tag'] = $tag;
-		$query['fromdate'] = $fromdate;
-		$query['todate'] = $todate;
+		$query['fromdate'] = $fromDate;
+		$query['todate'] = $toDate;
 
 		return new DynamicResponseModel($this->processRestRequest('GET', '/stats/outbound/opens/platforms', $query));
 	}
@@ -611,17 +620,17 @@ class PostmarkClient extends PostmarkClientBase {
      * optionally filtering on message tag, and a to and from date.
      *
      * @param  string $tag Filter by tag.
-     * @param  string $fromdate must be of the format 'YYYY-MM-DD'
-     * @param  string $todate must be of the format 'YYYY-MM-DD'
+     * @param  string $fromDate must be of the format 'YYYY-MM-DD'
+     * @param  string $toDate must be of the format 'YYYY-MM-DD'
      * @return DynamicResponseModel
      * @throws Models\PostmarkException
      */
-	function getOutboundEmailClientStatistics($tag = NULL, $fromdate = NULL, $todate = NULL) {
+	function getOutboundEmailClientStatistics($tag = NULL, $fromDate = NULL, $toDate = NULL) {
 		$query = array();
 
 		$query['tag'] = $tag;
-		$query['fromdate'] = $fromdate;
-		$query['todate'] = $todate;
+		$query['fromdate'] = $fromDate;
+		$query['todate'] = $toDate;
 
 		return new DynamicResponseModel($this->processRestRequest('GET', '/stats/outbound/opens/emailclients', $query));
 	}
@@ -631,17 +640,17 @@ class PostmarkClient extends PostmarkClientBase {
      * optionally filtering on message tag, and a to and from date.
      *
      * @param  string $tag Filter by tag.
-     * @param  string $fromdate must be of the format 'YYYY-MM-DD'
-     * @param  string $todate must be of the format 'YYYY-MM-DD'
+     * @param  string $fromDate must be of the format 'YYYY-MM-DD'
+     * @param  string $toDate must be of the format 'YYYY-MM-DD'
      * @return DynamicResponseModel
      * @throws Models\PostmarkException
      */
-	function getOutboundReadTimeStatistics($tag = NULL, $fromdate = NULL, $todate = NULL) {
+	function getOutboundReadTimeStatistics($tag = NULL, $fromDate = NULL, $toDate = NULL) {
 		$query = array();
 
 		$query['tag'] = $tag;
-		$query['fromdate'] = $fromdate;
-		$query['todate'] = $todate;
+		$query['fromdate'] = $fromDate;
+		$query['todate'] = $toDate;
 
 		return new DynamicResponseModel($this->processRestRequest('GET', '/stats/outbound/opens/readtimes', $query));
 	}
@@ -765,12 +774,12 @@ class PostmarkClient extends PostmarkClientBase {
     /**
      * Delete a template.
      *
-     * @param integer $id The ID of the template to delete.
+     * @param integer|string $templateIdOrAlias The ID or alias of the template to delete.
      * @return DynamicResponseModel
      * @throws Models\PostmarkException
      */
-	function deleteTemplate($id) {
-		return new DynamicResponseModel($this->processRestRequest('DELETE', "/templates/$id"));
+	function deleteTemplate($templateIdOrAlias) {
+		return new DynamicResponseModel($this->processRestRequest('DELETE', "/templates/$templateIdOrAlias"));
 	}
 
     /**
@@ -780,50 +789,54 @@ class PostmarkClient extends PostmarkClientBase {
      * @param string $subject The template to be used for the 'subject' of emails sent using this template.
      * @param string $htmlBody The template to be used for the 'htmlBody' of emails sent using this template, optional if 'textBody' is not NULL.
      * @param string $textBody The template to be used for the 'textBody' of emails sent using this template, optional if 'htmlBody' is not NULL.
-     *
+     * @param string $alias
+	 *
      * @return DynamicResponseModel
      * @throws Models\PostmarkException
      */
-	function createTemplate($name, $subject, $htmlBody, $textBody) {
+	function createTemplate($name, $subject, $htmlBody, $textBody, $alias = NULL) {
 		$template = array();
 		$template["name"] = $name;
 		$template["subject"] = $subject;
 		$template["htmlBody"] = $htmlBody;
 		$template["textBody"] = $textBody;
+        $template["alias"] = $alias;
 		return new DynamicResponseModel($this->processRestRequest('POST', "/templates", $template));
 	}
 
     /**
      * Edit a template
      *
-     * @param integer $id The ID of the template you wish to update.
+     * @param integer|string $templateIdOrAlias The ID of the template you wish to update.
      * @param string $name The friendly name for this template.
      * @param string $subject The template to be used for the 'subject' of emails sent using this template.
      * @param string $htmlBody The template to be used for the 'htmlBody' of emails sent using this template.
      * @param string $textBody The template to be used for the 'textBody' of emails sent using this template.
-     *
+     * @param string $alias
+	 *
      * @return DynamicResponseModel
      * @throws Models\PostmarkException
      */
-	function editTemplate($id, $name = NULL, $subject = NULL, $htmlBody = NULL, $textBody = NULL) {
+	function editTemplate($templateIdOrAlias, $name = NULL, $subject = NULL, $htmlBody = NULL, $textBody = NULL, $alias = NULL) {
 		$template = array();
 		$template["name"] = $name;
 		$template["subject"] = $subject;
 		$template["htmlBody"] = $htmlBody;
 		$template["textBody"] = $textBody;
+        $template["alias"] = $alias;
 
-		return new DynamicResponseModel($this->processRestRequest('PUT', "/templates/$id", $template));
+		return new DynamicResponseModel($this->processRestRequest('PUT', "/templates/$templateIdOrAlias", $template));
 	}
 
     /**
      * Get the current information for a specific template.
      *
-     * @param integer $id the Id for the template info you wish to retrieve.
+     * @param integer|string $templateIdOrAlias the Id for the template info you wish to retrieve.
      * @return DynamicResponseModel
      * @throws Models\PostmarkException
      */
-	function getTemplate($id) {
-		return new DynamicResponseModel($this->processRestRequest('GET', "/templates/$id"));
+	function getTemplate($templateIdOrAlias) {
+		return new DynamicResponseModel($this->processRestRequest('GET', "/templates/$templateIdOrAlias"));
 	}
 
     /**
@@ -850,7 +863,7 @@ class PostmarkClient extends PostmarkClientBase {
      * @param string $subject The Subject template you wish to test.
      * @param string $htmlBody The HTML template you wish to test
      * @param string $textBody The number of templates to "Skip" before returning results.
-     * @param object $testingRenderModel The model to be used when doing test renders of the templates that successfully parse in this request.
+     * @param object $testRenderModel The model to be used when doing test renders of the templates that successfully parse in this request.
      * @param bool $inlineCssForHtmlTestRender If htmlBody is specified, the test render will automatically do CSS Inlining for the HTML content. You may opt-out of this behavior by passing 'false' for this parameter.
      * @return DynamicResponseModel
      * @throws Models\PostmarkException
