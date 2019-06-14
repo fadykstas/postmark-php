@@ -32,11 +32,12 @@ class DynamicResponseModel extends CaseInsensitiveArray {
 		parent::__construct($data);
 	}
 
-	/**
-	 * Infrastructure. Get an element by name.
-	 *
-	 * @param mixed $name Name of element to get from the dynamic response model.
-	 */
+    /**
+     * Infrastructure. Get an element by name.
+     *
+     * @param mixed $name Name of element to get from the dynamic response model.
+     * @return mixed|null|DynamicResponseModel
+     */
 	public function __get($name) {
 
 		$value = $this[$name];
